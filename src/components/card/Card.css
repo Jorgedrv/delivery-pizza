@@ -1,0 +1,16 @@
+.card-flat {
+    border: solid 1px #e2e8ee;
+    border-radius: 4px;    
+    padding: 24px;
+    width: 100%;
+    margin-bottom: 25px;
+}
+
+.card-shadow {
+    border: solid 1px #e2e8ee;
+    border-radius: 4px;    
+    padding: 24px;
+    width: 100%;
+    box-shadow: 0 2px 10px #00225b0f;
+    margin-bottom: 25px;
+}
