@@ -13,12 +13,10 @@ import './Loader.css';
 /**
  * loader
  */
-const Loader = (load) => (
-	load ?
-		<div className="loader-wrapper">
-			<div className="loader rotating" />
-		</div>
-		: <div />
+const Loader = () => (
+	<div className="loader-wrapper">
+		<div className="loader rotating" />
+	</div>
 );
 
 export default Loader;

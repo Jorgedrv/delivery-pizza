@@ -30,7 +30,7 @@
 
 .shopping-cart {
     color: #ffc107;
-
+    cursor: pointer;
 }
 
 .shopping-cart:hover {

@@ -1,13 +1,12 @@
 import React, { Component } from 'react';
 import './Product.css';
 import axios from '../../axios';
-import { Row, Col, Button, Alert } from 'react-bootstrap';
+import { Row, Col, Button, Alert, Modal } from 'react-bootstrap';
 import Card from '../../components/card/Card';
 import Loader from '../loader/Loader';
 import { Container } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
-import Menu from '../menu/Menu';
 import ShoppingCart from '../shopping-cart/ShoppingCart';
 
 /**
@@ -28,16 +27,21 @@ export class Product extends Component {
 		super(props);
 		this.state = {
 			products: [],
-			orderNumber: 0,
+			orderNumber: Number(sessionStorage.getItem("orderNumber")),
 			added: false,
-			count: 0,
+			count: Number(sessionStorage.getItem("count")),
+			load: false,
+			shoppingCartOrders: [],
+			modalSuccess: false,
+			modalOrders: false
 		};
 	};
 
 	async componentDidMount() {
+		this.setState({ load: true });
 		axios.get('/api/products')
 			.then(response => {
-				this.setState({ products: response.data });
+				this.setState({ products: response.data, load: false });
 			})
 			.catch(error => {
 				this.setState({ error: true });
@@ -46,16 +50,50 @@ export class Product extends Component {
 	}
 
 	createOrder = (data) => {
-		debugger;
+		this.setState({ load: true });
+		if (this.state.orderNumber == 0) {
+			const body = {
+				user_id: 1,
+				description: data.name,
+				date: new Date().toISOString().slice(0, 19).replace('T', ' ')
+			};
+			axios.post('/api/order', body)
+				.then(response => {
+					this.requestOrder(response.data.id, data.id);
+					this.setState({
+						productId: data.id,
+						orderCreated: true
+					});
+					sessionStorage.setItem("orderNumber", response.data.id);
+					this.setState({ orderNumber: sessionStorage.getItem("orderNumber") });
+				})
+				.catch(error => {
+					this.setState({ error: true });
+					console.log(error); // eslint-disable-line
+				});
+		}
+		if (this.state.orderNumber > 0) {	
+			this.requestOrder(this.state.orderNumber, data.id);
+		}
+	}
+
+	requestOrder = (order_id, product_id) => {
 		const body = {
-			user_id: 1,
-			description: data.name,
-			date: new Date().toISOString().slice(0, 19).replace('T', ' ') 
+			order_id: order_id,
+			product_id: product_id,
+			quantity: 1,
+			subtotal: 0,
+			price: 0
 		};
-		axios.post('/api/order', body)
+		axios.post('/api/order-product', body)
 			.then(response => {
-				this.setState({ orderNumber: response.id, count: this.state.count + 1 });
-				this.requestOrder(data.id, this.state.orderNumber);
+				sessionStorage.setItem("count", Number(this.state.count + 1));
+				this.setState({ 
+					added: true, 
+					modalSuccess: true, 
+					load: false,
+					count: Number(sessionStorage.getItem("count"))
+				});
 			})
 			.catch(error => {
 				this.setState({ error: true });
@@ -63,44 +101,90 @@ export class Product extends Component {
 			});
 	}
 
-	requestOrder = (order_id, product_id) => {
-		const body = {
-			order_id: order_id,
-			product_id: product_id
-		};
-		axios.post('/api/order', body)
+	shoppingCartOrders = () => {
+		this.setState({ load: true });
+		axios.get(`/api/order-product/${this.state.orderNumber}`)
 			.then(response => {
-				this.setState({ orderNumber: response.id });
+				this.setState({ 
+					added: true,  
+					load: false,
+					shoppingCartOrders: [ ...response.data ],
+					modalOrders: true
+				});
 			})
 			.catch(error => {
 				this.setState({ error: true });
 				console.log(error); // eslint-disable-line
 			});
 	}
-	
-	success = () => {
-		debugger;
-		return (
-			<Alert variant="success">
-  				Your Pizza Was added to the Shopping Cart
-			</Alert>
-		);
+
+	closeModal = () => {
+		this.setState({ modalSuccess: false, modalOrders: false });
 	}
 
 	/**
 	 * Default JSX Wrapper
 	 */
 	render() {
-		return this.state.products.length > 0 ? (
+		return (
 			<Container>
-				{this.state.added ? this.success : <div/>}
-				<Menu />
-				<br />
+				{this.state.load && <Loader/>}
+				<Card>
+					<h1 className="title">Come and taste the best Pizzas! Yummy</h1>
+					<img
+						style={{width: '500px', height: '300px'}} 
+						alt="Online Training" 
+						className="img-responsive" 
+						src="https://www.laespanolaaceites.com/wp-content/uploads/2019/06/pizza-con-chorizo-jamon-y-queso-1080x671.jpg" 
+					/>
+				</Card>
+				<Modal
+					size="lg"	
+					aria-labelledby="contained-modal-title-vcenter"
+					centered
+					show={this.state.modalSuccess}	
+				>
+					<Modal.Header>
+						<Modal.Title id="contained-modal-title-vcenter">
+							Information
+						</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<Alert variant="success">
+							Your product was added to the Shopping Cart
+						</Alert>
+					</Modal.Body>
+					<Modal.Footer>
+						<Button onClick={this.closeModal} >Close</Button>
+					</Modal.Footer>
+				</Modal>
+				<Modal
+					size="lg"	
+					aria-labelledby="contained-modal-title-vcenter"
+					centered
+					show={this.state.modalOrders}	
+				>
+					<Modal.Header>
+						<Modal.Title id="contained-modal-title-vcenter">
+							Information
+						</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						<ShoppingCart 
+							orders={this.state.shoppingCartOrders} 
+							closeModal={this.closeModal}
+						/>
+					</Modal.Body>
+					<Modal.Footer>
+					</Modal.Footer>
+				</Modal>
 				<Row>
-					<a className="shopping-cart" href="/shopping-cart">
-						<i className="shoppint-cart-count">{this.state.count}</i>
-						<FontAwesomeIcon icon={faShoppingCart} size="lg" />
-					</a>
+					<div activeClassName='active' className="shopping-cart">
+						<a onClick={this.shoppingCartOrders}>
+							<i className="shoppint-cart-count">{this.state.count}</i>
+							<FontAwesomeIcon icon={faShoppingCart} size="lg" />
+						</a>
+					</div>
 					{this.state.products.map(data => {
 						return (
 							<Col lg={4} md={6} sm={12}>
@@ -120,7 +204,7 @@ export class Product extends Component {
 					</div>
 				</Row>
 			</Container>
-		) : <Loader />;
+		);
 	}
 
 }

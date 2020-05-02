@@ -1,8 +1,6 @@
-import React, { PureComponent } from 'react';
+import React from 'react';
 import './ShoppingCart.css';
-//import axios from '../../axios';
 import { Container, Row } from 'react-bootstrap';
-//import Loader from '../loader/Loader';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash, faSync } from '@fortawesome/free-solid-svg-icons';
 
@@ -14,57 +12,70 @@ import { faTrash, faSync } from '@fortawesome/free-solid-svg-icons';
  * @since    1.0.0 - 27 Apr 2020
  *
  */
-export const ShoppingCart = ({ product }) => {
-	const totalPrice = '$10.44';
+export const ShoppingCart = ({orders, closeModal}) => {
+	let price = 0;
 	return (
 		<Container>
 			<Row>
-				<table id="cart" class="table table-hover table-condensed">
-					<thead>
-						<tr>
-							<th style={{ width: '50%' }}>Product</th>
-							<th style={{ width: '10%' }}>Price</th>
-							<th style={{ width: '8%' }}>Quantity</th>
-							<th style={{ width: '22%' }} class="text-center">Subtotal</th>
-							<th style={{ width: '10%' }}></th>
-						</tr>
-					</thead>
+				{orders.map(data => {
+					price = Number(price + data.price);
+					return (
+						<table id="cart" class="table table-hover table-condensed">
+							<thead>
+								<tr>
+									<th style={{ width: '70%' }}>Product</th>
+									<th style={{ width: '10%' }}>Price</th>
+									<th style={{ width: '8%' }}>Quantity</th>
+									<th style={{ width: '22%' }} class="text-center">Subtotal</th>
+									<th style={{ width: '10%' }}></th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td data-th="Product">
+										<div class="row">
+											<div class="col-sm-10">
+												<h4 class="nomargin">{data.name}</h4>
+												<p>{data.description}</p>
+											</div>
+										</div>
+									</td>
+									<td data-th="Price">{data.price}</td>
+									<td data-th="Quantity">
+										<input type="number" class="form-control text-center" value={data.quantity} />
+									</td>
+									<td data-th="Subtotal" class="text-center">{data.subtotal}</td>
+									<td class="actions" data-th="">
+										<button class="btn btn-info btn-sm"><FontAwesomeIcon icon={faSync} /></button>
+									</td>
+									<td class="actions" data-th="">
+										<button class="btn btn-danger btn-sm"><FontAwesomeIcon icon={faTrash} /></button>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					);
+				})
+				}
+				<table id="cart" class="table table-condensed">
 					<tbody>
-						<tr>
-							<td data-th="Product">
-								<div class="row">
-									<div class="col-sm-2 hidden-xs"><img src="http://placehold.it/100x100" alt="..." class="img-responsive" /></div>
-									<div class="col-sm-10">
-										<h4 class="nomargin">{product.name}</h4>
-										<p>{product.description}</p>
-									</div>
-								</div>
-							</td>
-							<td data-th="Price">{totalPrice}</td>
-							<td data-th="Quantity">
-								<input type="number" class="form-control text-center" value="1" />
-							</td>
-							<td data-th="Subtotal" class="text-center">{totalPrice}</td>
-							<td class="actions" data-th="">
-								<button class="btn btn-info btn-sm"><FontAwesomeIcon icon={faSync} /></button>
-								<button class="btn btn-danger btn-sm"><FontAwesomeIcon icon={faTrash} /></button>
-							</td>
-						</tr>
-					</tbody>
-					<tfoot>
 						<tr class="visible-xs">
-							<td class="text-center"><strong>Total {totalPrice}</strong></td>
+							<td class="hidden-xs text-center"><strong>Subtotal 1</strong></td>
+							<td class="hidden-xs text-center"><strong>Price {price}</strong></td>
 						</tr>
 						<tr>
-							<td><a href="#" class="btn btn-warning"><i class="fa fa-angle-left"></i> Continue Shopping</a></td>
+							<td>
+								<button className="btn btn-warning" onClick={closeModal}>
+									Continue Shopping
+								</button>
+							</td>
 							<td colspan="2" class="hidden-xs"></td>
-							<td class="hidden-xs text-center"><strong>Total {totalPrice}</strong></td>
 							<td><a href="#" class="btn btn-success btn-block">Checkout <i class="fa fa-angle-right"></i></a></td>
 						</tr>
-					</tfoot>
+					</tbody>
 				</table>
 			</Row>
-		</Container>
+		</Container >
 	);
 };
 
