@@ -6,12 +6,11 @@ import { products, enterprise, consulting } from '../test-mock/mock';
 import cms from '../../shared/cms.json';
 
 /**
- * Test for Consulting component
+ * Test for Menu component
  *
- * @version        1.1.0 - 05 Aug 2019
- * @author         Jimmy Ibanez - Jimmy.Ibanez_ex@scotiabank.cl (Imagemaker)
- * @author         Jorge Romero - Jorge.Romero_ex@scotiabank.cl (Imagemaker)
- * @since          1.0.0 - 26 May 2019
+ * @version        1.0.0 - 03 May 2019
+ * @author         Jorge Romero - Jorgeddrv@gmail.com
+ * @since          1.0.0 - 03 May 2019
  *
  */
 configure({ adapter: new Adapter() });

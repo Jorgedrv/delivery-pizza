@@ -1,20 +1,21 @@
 import React, { Component } from 'react';
 import './Product.css';
 import axios from '../../axios';
-import { Row, Col, Button, Alert, Modal } from 'react-bootstrap';
+import { Row, Col, Button, Alert } from 'react-bootstrap';
 import Card from '../../components/card/Card';
 import Loader from '../loader/Loader';
 import { Container } from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShoppingCart } from '@fortawesome/free-solid-svg-icons';
 import ShoppingCart from '../shopping-cart/ShoppingCart';
+import Modal from '../Modal/Modal';
 
 /**
- * User View
+ * Product Component
  *
- * @version  1.0.0 - 27 Apr 2020
+ * @version  1.0.0 - 30 Apr 2020
  * @author   Jorge Romero - Jorge.Romero_ex@scotiabank.cl (Imagemaker)
- * @since    1.0.0 - 27 Apr 2020
+ * @since    1.0.0 - 30 Apr 2020
  *
  */
 export class Product extends Component {
@@ -29,11 +30,13 @@ export class Product extends Component {
 			products: [],
 			orderNumber: Number(sessionStorage.getItem("orderNumber")),
 			added: false,
-			count: Number(sessionStorage.getItem("count")),
 			load: false,
 			shoppingCartOrders: [],
 			modalSuccess: false,
-			modalOrders: false
+			modalOrders: false,
+			addedProducts: JSON.parse(sessionStorage.getItem("addedProducts")) || [],
+			quantity: 0,
+			orderProductId: 0
 		};
 	};
 
@@ -72,12 +75,17 @@ export class Product extends Component {
 					console.log(error); // eslint-disable-line
 				});
 		}
-		if (this.state.orderNumber > 0) {	
+		if (this.state.orderNumber > 0) {
 			this.requestOrder(this.state.orderNumber, data.id);
 		}
 	}
 
 	requestOrder = (order_id, product_id) => {
+		let quantity = this.state.addedProducts.filter(value => value == product_id).length; 
+		if (quantity >= 1) {
+			this.updateProduct(Number(quantity + 1), this.state.orderProductId, product_id);
+			return;
+		}
 		const body = {
 			order_id: order_id,
 			product_id: product_id,
@@ -85,14 +93,36 @@ export class Product extends Component {
 			subtotal: 0,
 			price: 0
 		};
+		let arrayProduct = this.state.addedProducts;
 		axios.post('/api/order-product', body)
 			.then(response => {
-				sessionStorage.setItem("count", Number(this.state.count + 1));
-				this.setState({ 
-					added: true, 
-					modalSuccess: true, 
+				arrayProduct.push(product_id);
+				sessionStorage.setItem("addedProducts", JSON.stringify(arrayProduct));
+				this.setState({
+					added: true,
+					modalSuccess: true,
 					load: false,
-					count: Number(sessionStorage.getItem("count"))
+					addedProducts: JSON.parse(sessionStorage.getItem("addedProducts")),
+					orderProductId: response.data.id
+				});
+			})
+			.catch(error => {
+				this.setState({ error: true });
+				console.log(error); // eslint-disable-line
+			});
+	}
+
+	updateProduct = (quantity, id, product_id) => {
+		const body = { quantity: quantity };
+		let arrayProduct = this.state.addedProducts;
+		axios.put(`/api/order-product/${id}`, body)
+			.then(response => {
+				arrayProduct.push(product_id);
+				sessionStorage.setItem("addedProducts", JSON.stringify(arrayProduct));
+				this.setState({ 
+					load: false, 
+					modalSuccess: true, 
+					addedProducts: JSON.parse(sessionStorage.getItem("addedProducts"))
 				});
 			})
 			.catch(error => {
@@ -105,10 +135,10 @@ export class Product extends Component {
 		this.setState({ load: true });
 		axios.get(`/api/order-product/${this.state.orderNumber}`)
 			.then(response => {
-				this.setState({ 
-					added: true,  
+				this.setState({
+					added: true,
 					load: false,
-					shoppingCartOrders: [ ...response.data ],
+					shoppingCartOrders: [...response.data],
 					modalOrders: true
 				});
 			})
@@ -116,6 +146,70 @@ export class Product extends Component {
 				this.setState({ error: true });
 				console.log(error); // eslint-disable-line
 			});
+	}
+
+	deleteProduct = (data) => {
+		this.setState({ load: true });
+		let arrayProduct = this.state.addedProducts;
+		axios.delete(`/api/order-product/${data.id}`)
+		.then(response => {
+			this.shoppingCartOrders();
+			arrayProduct = arrayProduct.filter(element => element !== data.product_id);
+			sessionStorage.setItem("addedProducts", JSON.stringify(arrayProduct));
+			this.setState({ addedProducts: JSON.parse(sessionStorage.getItem("addedProducts")) });
+		})
+		.catch(error => {
+			this.setState({ error: true });
+			console.log(error); // eslint-disable-line
+		});
+	}
+
+	updateQuantity = (data) => {
+		this.setState({ load: true });
+		const body = { quantity: data.quantity };
+		let arrayProduct = this.state.addedProducts;
+		let productQuantity = this.state.addedProducts.filter(e => e == data.product_id).length;
+		let index = 0;
+		axios.put(`/api/order-product/${data.id}`, body)
+		.then(response => {
+			if (data.quantity > productQuantity) {
+				for (let i = productQuantity; i < data.quantity; i++) {
+					arrayProduct.push(data.product_id);
+				}
+			} else {
+				for (let i = data.quantity; i < productQuantity; i++) {
+					index = arrayProduct.indexOf(data.product_id);
+					arrayProduct.splice(index, 1);
+				}
+			}
+			sessionStorage.setItem("addedProducts", JSON.stringify(arrayProduct));
+			this.setState({ 
+				load: false, 
+				addedProducts: JSON.parse(sessionStorage.getItem("addedProducts")) 
+			});
+		})
+		.catch(error => {
+			this.setState({ error: true });
+			console.log(error); // eslint-disable-line
+		});
+	}
+
+	confirmOrder = () => {
+		
+	}
+
+	onChangeQuantity = (event, data) => {
+		let array = this.state.shoppingCartOrders;
+		if (event.target.value > 0) {
+			array.forEach((element, index) => {
+				if(element.id === data.id) {
+					element.quantity = Number(event.target.value);
+				}
+			});
+			this.setState({
+				shoppingCartOrders: array
+			});
+		}
 	}
 
 	closeModal = () => {
@@ -128,60 +222,43 @@ export class Product extends Component {
 	render() {
 		return (
 			<Container>
-				{this.state.load && <Loader/>}
+				{this.state.load && <Loader />}
 				<Card>
 					<h1 className="title">Come and taste the best Pizzas! Yummy</h1>
 					<img
-						style={{width: '500px', height: '300px'}} 
-						alt="Online Training" 
-						className="img-responsive" 
-						src="https://www.laespanolaaceites.com/wp-content/uploads/2019/06/pizza-con-chorizo-jamon-y-queso-1080x671.jpg" 
+						style={{ width: '500px', height: '300px' }}
+						alt="Online Training"
+						className="img-responsive"
+						src="https://www.laespanolaaceites.com/wp-content/uploads/2019/06/pizza-con-chorizo-jamon-y-queso-1080x671.jpg"
 					/>
 				</Card>
-				<Modal
-					size="lg"	
-					aria-labelledby="contained-modal-title-vcenter"
-					centered
-					show={this.state.modalSuccess}	
+				<Modal 
+					title="Information"
+					buttonClose={true}
+					showModal={this.state.modalSuccess}
+					closeModal={this.closeModal}
 				>
-					<Modal.Header>
-						<Modal.Title id="contained-modal-title-vcenter">
-							Information
-						</Modal.Title>
-					</Modal.Header>
-					<Modal.Body>
-						<Alert variant="success">
-							Your product was added to the Shopping Cart
-						</Alert>
-					</Modal.Body>
-					<Modal.Footer>
-						<Button onClick={this.closeModal} >Close</Button>
-					</Modal.Footer>
+					<Alert variant="success">
+						Your product was added to the Shopping Cart
+					</Alert>
 				</Modal>
-				<Modal
-					size="lg"	
-					aria-labelledby="contained-modal-title-vcenter"
-					centered
-					show={this.state.modalOrders}	
+				<Modal 
+					title="Shopping Cart"
+					showModal={this.state.modalOrders}
 				>
-					<Modal.Header>
-						<Modal.Title id="contained-modal-title-vcenter">
-							Information
-						</Modal.Title>
-					</Modal.Header>
-					<Modal.Body>
-						<ShoppingCart 
-							orders={this.state.shoppingCartOrders} 
-							closeModal={this.closeModal}
-						/>
-					</Modal.Body>
-					<Modal.Footer>
-					</Modal.Footer>
+					<ShoppingCart
+						orders={this.state.shoppingCartOrders}
+						closeModal={this.closeModal}
+						updateQuantity={this.updateQuantity}
+						deleteProduct={this.deleteProduct}
+						onChangeQuantity={this.onChangeQuantity}
+						confirmOrder={this.confirmOrder}
+					/>
 				</Modal>
 				<Row>
-					<div activeClassName='active' className="shopping-cart">
+					<div className="shopping-cart">
 						<a onClick={this.shoppingCartOrders}>
-							<i className="shoppint-cart-count">{this.state.count}</i>
+							<i className="shoppint-cart-count">{this.state.addedProducts.length}</i>
 							<FontAwesomeIcon icon={faShoppingCart} size="lg" />
 						</a>
 					</div>
@@ -199,7 +276,7 @@ export class Product extends Component {
 							</Col>
 						);
 					})}
-					<div class="footer-copyright text-center py-3">© 2020 Copyright:
+					<div className="footer-copyright text-center py-3">© 2020 Copyright:
 						<a href="https://mdbootstrap.com/"> MDBootstrap.com</a>
 					</div>
 				</Row>
